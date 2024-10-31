@@ -85,3 +85,22 @@ RUN \
   mkdir lib32 && \
   cp /freetype-2.4.12/objs/.libs/libfreetype.so* lib32/ && \
   rm -rf /freetype-2.4.12 /freetype-2.4.12.tar.bz2
+
+# Install Vivado 2019.1.1
+ENV XLNX_INSTALLER_TAR="/root/Xilinx_Vivado_SDK_2019.1_0524_1430.tar.gz"
+ENV XLNX_INSTALLER_DIR="/Xilinx_Vivado_SDK_2019.1_0524_1430"
+ENV XLNX_CONFIG_FILE="/root/install_config.txt"
+COPY "./Xilinx_Vivado_SDK_2019.1_0524_1430.tar.gz" $XLNX_INSTALLER_TAR
+COPY "./install_config.txt" "$XLNX_CONFIG_FILE"
+RUN tar -zxf "$XLNX_INSTALLER_TAR" && \
+  rm "$XLNX_INSTALLER_TAR" 
+RUN ls "/root" && \
+  chmod +x "$XLNX_INSTALLER_DIR/xsetup"
+RUN ( \
+  cd "$XLNX_INSTALLER_DIR" && \
+  ./xsetup \
+  --agree XilinxEULA,3rdPartyEULA,WebTalkTerms \
+  --config "$XLNX_CONFIG_FILE" \
+  --batch INSTALL \
+  )
+RUN rm -rf "$XLNX_INSTALLER_DIR"
