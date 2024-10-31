@@ -117,13 +117,46 @@ RUN ( \
     -DLLVM_INSTALL_UTILS=ON \
     -DLLVM_TARGETS_TO_BUILD="X86" \
     -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-6.0 && \
-    make && \
+    make -j8 && \
     make install && rm -rf /llvm )
 
-# Build Dynamatic
+# Add a user
+RUN groupadd --gid 1000 dynamatic && \
+  useradd --uid 1000 --gid dynamatic --shell /bin/bash --create-home dynamatic
+
 RUN ( \
-  git clone --recurse-submodules https://github.com/EPFL-LAP/dynamatic.git && \
-  cd dynamatic && \
-  git checkout 65da2a4956a4f70aca2e54b20e65ff3bd3d963c8 && \
-  chmod +x ./build.sh \
-  ./build.sh --release )
+  echo "export GUROBI_HOME=/opt/gurobi1103/linux64" && \
+  echo "export PATH=\${PATH}:\${GUROBI_HOME}/bin" && \
+  echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$GUROBI_HOME/lib" && \
+  echo "export PATH=\$PATH:/opt/intelFPGA/20.1/modelsim_ase/bin" && \
+  echo "export PATH=\$PATH:/tools/Xilinx/Vivado/2019.1/bin" \
+  ) >> /home/dynamatic/.bashrc
+
+RUN apt install -y vim
+RUN chown -R dynamatic:dynamatic /opt/intelFPGA
+
+# Build modelsim simulation library
+ENV F_MODELSIM_LIB_SCRIPT="/build_modelsim_lib.tcl"
+RUN ( \
+  echo "compile_simlib \
+  -simulator modelsim -simulator_exec_path {/opt/intelFPGA/20.1/modelsim_ase/bin} \
+  -family kintex7 -language vhdl -library unisim -dir {/opt/modelsim_lib} \
+  -32bit \
+  -force \
+  -verbose \
+  -quiet \
+  ") > $F_MODELSIM_LIB_SCRIPT
+
+RUN \
+  /tools/Xilinx/Vivado/2019.1/bin/vivado \
+  -mode batch \
+  -source $F_MODELSIM_LIB_SCRIPT && rm $F_MODELSIM_LIB_SCRIPT
+
+
+# # Build Dynamatic
+# RUN ( \
+#   git clone --recurse-submodules https://github.com/EPFL-LAP/dynamatic.git && \
+#   cd dynamatic && \
+#   git checkout 65da2a4956a4f70aca2e54b20e65ff3bd3d963c8 && \
+#   chmod +x ./build.sh \
+#   ./build.sh --release )
