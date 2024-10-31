@@ -1,5 +1,5 @@
 # Start from a lightweight Linux base image
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # Set environment variables to avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -21,7 +21,7 @@ RUN apt-get install -y \
     g++-multilib \
     lib32z1 \
     lib32stdc++6 \
-    lib32gcc1 \
+    lib32gcc-s1 \
     libxt6:i386 \
     libxtst6:i386 \
     expat:i386 \
@@ -104,3 +104,26 @@ RUN ( \
   --batch INSTALL \
   )
 RUN rm -rf "$XLNX_INSTALLER_DIR"
+
+# Build llvm-6.0
+RUN ( \
+    git clone http://github.com/llvm-mirror/llvm --branch release_60 --depth 1 && \
+    cd llvm/tools && \
+    git clone http://github.com/llvm-mirror/clang --branch release_60 --depth 1 && \
+    git clone http://github.com/llvm-mirror/polly --branch release_60 --depth 1 && \
+    cd .. && \
+    mkdir _build && cd _build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Debug \
+    -DLLVM_INSTALL_UTILS=ON \
+    -DLLVM_TARGETS_TO_BUILD="X86" \
+    -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-6.0 && \
+    make && \
+    make install && rm -rf /llvm )
+
+# Build Dynamatic
+RUN ( \
+  git clone --recurse-submodules https://github.com/EPFL-LAP/dynamatic.git && \
+  cd dynamatic && \
+  git checkout 65da2a4956a4f70aca2e54b20e65ff3bd3d963c8 && \
+  chmod +x ./build.sh \
+  ./build.sh --release )
